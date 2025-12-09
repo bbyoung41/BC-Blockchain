@@ -1,0 +1,426 @@
+{% extends "base.html" %}
+{% block title %}Blockchain - MyCryptocurrency{% endblock %}
+
+{% block content %}
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        /* --- BASE STYLES --- */
+        body {
+            margin: 0;
+            background-color: #111;
+            color: #eee;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* The main D3 canvas */
+        #canvas {
+            width: 100vw;
+            height: 100vh;
+            touch-action: none;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Text element styling for D3 */
+        .node-label {
+            fill: #999;
+            pointer-events: none;
+            font-size: 8px;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 0 2px #000;
+        }
+
+        /* Style for Block height text only */
+        .block-number {
+             fill: #fff;
+             font-size: 10px;
+             text-shadow: 0 0 5px #00bcd4;
+        }
+
+        /* --- UI ELEMENTS --- */
+
+        .legend {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            font-size: 12px;
+            pointer-events: none;
+            backdrop-filter: blur(2px);
+            z-index: 20;
+        }
+
+        .legend-item { display: flex; align-items: center; margin-bottom: 5px; }
+        .dot { border-radius: 50%; margin-right: 8px; }
+        .l-block { background-color: #00bcd4; width: 12px; height: 12px;}
+        .l-detail { background-color: #ff4081; width: 10px; height: 10px;}
+        .l-tx { background-color: #ffd700; width: 8px; height: 8px;}
+
+        /* Bottom Information Panel (Mobile-friendly) */
+        .info-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: #1a1a1a;
+            border-top: 2px solid #00bcd4;
+            transform: translateY(110%);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            padding: 20px;
+            box-sizing: border-box;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
+            z-index: 100;
+            padding-bottom: 40px;
+        }
+
+        .info-panel.active { transform: translateY(0); }
+        .info-header { font-size: 18px; font-weight: bold; margin-bottom: 8px; color: #fff; display: flex; justify-content: space-between; align-items: center; }
+        .info-sub { font-size: 13px; color: #aaa; font-family: 'Courier New', monospace; word-break: break-all; line-height: 1.4; }
+        .close-btn { background: none; border: 1px solid #444; color: #888; padding: 5px 10px; border-radius: 4px; font-size: 12px; }
+        .hint {
+            position: absolute;
+            bottom: 30px;
+            width: 100%;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0.7;
+            z-index: 20;
+        }
+    </style>
+
+<div class="legend">
+    <div class="legend-item"><div class="dot l-block"></div>Block</div>
+    <div class="legend-item"><div class="dot l-detail"></div>Detail</div>
+    <div class="legend-item"><div class="dot l-tx"></div>Transaction</div>
+</div>
+
+<div class="hint">Tap nodes to expand • Drag to move • Pinch to zoom</div>
+
+<div id="canvas"></div>
+
+<div class="info-panel" id="infoPanel">
+    <div class="info-header">
+        <span id="panelTitle">Block Info</span>
+        <button class="close-btn" onclick="closePanel()">✕</button>
+    </div>
+    <div class="info-sub" id="panelContent">
+        ...
+    </div>
+</div>
+
+<script>
+    // --- 1. CONFIGURATION ---
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+
+    const BLOCK_SIZE = 12;
+    const DETAIL_SIZE = 14;
+    const TX_SIZE = 8;
+    const LINK_DISTANCE = 40;
+
+    const COLOR_BLOCK = "#00bcd4";
+    const COLOR_TX = "#ffd700";
+    const COLOR_DETAIL = "#ff4081";
+
+    // --- 2. DATA SOURCE CONFIGURATION ---
+    const API_URL_BLOCKS = 'http://127.0.0.1:5000/api/blockchain';
+    // NEW API ENDPOINT for fetching transaction details
+    const API_URL_TRANSACTIONS = 'http://127.0.0.1:5000/api/transactions/';
+
+    let graphData = { nodes: [], links: [] };
+
+    // --- 3. D3 SETUP ---
+    const svg = d3.select("#canvas").append("svg")
+        .attr("width", width)
+        .attr("height", height)
+        .call(d3.zoom().scaleExtent([0.2, 4]).on("zoom", (event) => container.attr("transform", event.transform)))
+        .on("dblclick.zoom", null);
+
+    const container = svg.append("g");
+
+    const simulation = d3.forceSimulation(graphData.nodes)
+        .force("link", d3.forceLink(graphData.links).id(d => d.id).distance(d => d.type === 'chain' ? LINK_DISTANCE * 1.2 : LINK_DISTANCE * 0.8))
+        .force("charge", d3.forceManyBody().strength(-100))
+        .force("collide", d3.forceCollide(DETAIL_SIZE + 2))
+        .force("center", d3.forceCenter(width / 2, height / 2))
+        .force("y", d3.forceY(height/2).strength(0.05));
+
+    let link = container.append("g").attr("stroke-opacity", 0.6).selectAll("line");
+    let node = container.append("g").selectAll("circle");
+    let label = container.append("g").selectAll("text");
+
+
+    // --- 4. DATA INITIALIZATION: FETCH BLOCKS ---
+    function initializeGraph() {
+        console.log("Fetching block chain structure from Flask API...");
+
+        fetch(API_URL_BLOCKS)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                graphData.nodes = data.nodes;
+                graphData.links = data.links;
+                updateGraph();
+            })
+            .catch(error => {
+                console.error("Error fetching blockchain structure:", error);
+                const errorDiv = d3.select("body").append("div")
+                    .style("position", "absolute").style("top", "50%").style("width", "100%")
+                    .style("text-align", "center").style("color", "red").style("z-index", 50)
+                    .html("ERROR: Could not load data. Ensure Flask server is running and accessible.");
+            });
+    }
+
+
+    // --- 5. NEW: FETCH TRANSACTION DETAILS ---
+    async function fetchTransactionDetails(blockId, txCount, containerNode) {
+        console.log(`Fetching ${txCount} transactions for block ${blockId}...`);
+
+        try {
+            // Include block ID in the URL so Flask knows which block to fetch for
+            const response = await fetch(`${API_URL_TRANSACTIONS}${blockId}?count=${txCount}`);
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch transactions: ${response.status}`);
+            }
+            const transactions = await response.json();
+
+            // Render the fetched transactions
+            transactions.forEach((tx, i) => {
+                const txId = `${containerNode.id}-tx-${i}`;
+
+                // Construct the info string from the fetched details
+                const txInfo =
+                    `Sender: ${tx.sender}<br>` +
+                    `Recipient: ${tx.recipient}<br>` +
+                    `Value: ${tx.value.toFixed(4)} BC`;
+
+                newNode(txId, 'transaction', containerNode.id, tx.hash, txInfo, containerNode.x, containerNode.y);
+                newLink(containerNode.id, txId, 'tx-link');
+            });
+
+            // Update the graph to show the new nodes
+            updateGraph();
+
+        } catch (error) {
+            console.error("Error during transaction fetch:", error);
+            // Optionally update the info panel with an error message
+            pContent.innerHTML = "Error loading transactions.";
+        }
+    }
+
+
+    // --- 6. INTERACTION LOGIC (MODIFIED) ---
+    function handleNodeTap(event, d) {
+        event.stopPropagation();
+        showPanel(d);
+
+        // Block Expansion Logic
+        if (d.type === 'block' && !d.expanded) {
+            d.expanded = true;
+            const txCount = d.tx_count || 0;
+
+            const detailsData = [
+                { label: "Hash", value: d.hash.substring(0, 10) + "...", type: 'detail' },
+                // The TX container node needs to store the block's ID/height to request transactions later
+                { label: "Transactions", value: txCount, type: 'tx-container', rawTxCount: txCount, block_id: d.id }
+            ];
+
+            detailsData.forEach((det, index) => {
+                const detailId = `${d.id}-det-${index}`;
+                newNode(detailId, det.type, d.id, det.label, det.value, d.x, d.y, det.rawTxCount, det.block_id);
+                newLink(d.id, detailId, 'detail-link');
+            });
+            updateGraph();
+        }
+
+        // Transaction Container Expansion Logic (MODIFIED)
+        else if (d.type === 'tx-container' && !d.expanded) {
+            d.expanded = true;
+            // Now we call the new fetch function!
+            fetchTransactionDetails(d.block_id, d.rawTxCount, d);
+            // Note: updateGraph() is called inside fetchTransactionDetails after data arrives.
+        }
+
+        // Collapse Logic
+        else if (d.expanded) {
+            d.expanded = false;
+            collapseNode(d.id);
+            updateGraph();
+        }
+    }
+
+    function collapseNode(parentId) {
+        const idsToRemove = new Set();
+        function collect(pId) {
+            graphData.nodes.forEach(n => {
+                if (n.parent === pId) {
+                    idsToRemove.add(n.id);
+                    collect(n.id);
+                }
+            });
+        }
+        collect(parentId);
+        graphData.nodes = graphData.nodes.filter(n => !idsToRemove.has(n.id));
+        graphData.links = graphData.links.filter(l => !idsToRemove.has(l.source.id) && !idsToRemove.has(l.target.id));
+    }
+
+    function newNode(id, type, parentId, label, value, startX, startY, rawTxCount = 0, blockId = null) {
+        graphData.nodes.push({
+            id: id, type: type, parent: parentId,
+            label: label, info: value, expanded: false,
+            x: startX + (Math.random() - 0.5) * 5,
+            y: startY + (Math.random() - 0.5) * 5,
+            rawTxCount: rawTxCount,
+            block_id: blockId // Store block ID for the tx-container
+        });
+    }
+
+    function newLink(sourceId, targetId, type) {
+        graphData.links.push({ source: sourceId, target: targetId, type: type });
+    }
+
+
+    // --- 7. RENDER LOOP (UNCHANGED) ---
+    function updateGraph() {
+        // Links
+        link = link.data(graphData.links, d => [d.source.id, d.target.id].sort().join("-"));
+        link.exit().remove();
+        const linkEnter = link.enter().append("line")
+            .attr("stroke-width", d => d.type === 'chain' ? 3 : 1)
+            .attr("stroke", d => {
+                if (d.type === 'chain') return COLOR_BLOCK;
+                if (d.type === 'tx-link') return COLOR_TX;
+                return COLOR_DETAIL;
+            });
+        link = linkEnter.merge(link);
+
+
+        // Nodes
+        node = node.data(graphData.nodes, d => d.id);
+        node.exit().transition().duration(300).attr("r", 0).remove();
+
+        const nodeEnter = node.enter().append("circle")
+            .attr("r", 0)
+            .attr("cursor", "pointer")
+            .call(d3.drag().on("start", dragstarted).on("drag", dragged).on("end", dragended))
+            .on("click", handleNodeTap);
+
+        nodeEnter.attr("fill", d => {
+            if(d.type === 'block') return COLOR_BLOCK;
+            if(d.type === 'tx-container') return COLOR_DETAIL;
+            if(d.type === 'transaction') return COLOR_TX;
+            return COLOR_DETAIL;
+        });
+
+        nodeEnter.transition().duration(300).attr("r", d => {
+             if(d.type === 'block') return BLOCK_SIZE;
+             if(d.type === 'transaction') return TX_SIZE;
+             return DETAIL_SIZE;
+        });
+
+        node = nodeEnter.merge(node);
+
+
+        // Labels
+        label = label.data(graphData.nodes.filter(d => d.type === 'block'), d => d.id);
+        label.exit().remove();
+        const labelEnter = label.enter().append("text")
+            .attr("class", "node-label block-number")
+            .attr("text-anchor", "middle")
+            .text(d => `#${d.height}`);
+        label = labelEnter.merge(label);
+
+
+        // Restart Simulation
+        simulation.nodes(graphData.nodes);
+        simulation.force("link").links(graphData.links);
+        simulation.alpha(0.5).restart();
+    }
+
+    // --- 8. ANIMATION AND UTILITIES (UNCHANGED) ---
+    simulation.on("tick", () => {
+        link
+            .attr("x1", d => d.source.x)
+            .attr("y1", d => d.source.y)
+            .attr("x2", d => d.target.x)
+            .attr("y2", d => d.target.y);
+
+        node
+            .attr("cx", d => d.x)
+            .attr("cy", d => d.y);
+
+        label
+            .attr("x", d => d.x)
+            .attr("y", d => d.y - BLOCK_SIZE - 5);
+    });
+
+    function dragstarted(event, d) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x; d.fy = d.y;
+    }
+    function dragged(event, d) { d.fx = event.x; d.fy = event.y; }
+    function dragended(event, d) {
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null; d.fy = null;
+    }
+
+    // Panel Logic
+    const panel = document.getElementById("infoPanel");
+    const pTitle = document.getElementById("panelTitle");
+    const pContent = document.getElementById("panelContent");
+
+    function showPanel(d) {
+        panel.classList.add("active");
+        if(d.type === 'block') panel.style.borderTopColor = COLOR_BLOCK;
+        else if (d.type === 'transaction') panel.style.borderTopColor = COLOR_TX;
+        else panel.style.borderTopColor = COLOR_DETAIL;
+
+        if (d.type === 'block') {
+            pTitle.innerText = `Block #${d.height}`;
+            pContent.innerHTML = `<strong>Hash:</strong><br>${d.hash}<br><strong>Transactions:</strong> ${d.tx_count || 'N/A'}<br><br>Tap to see details.`;
+        } else if (d.type === 'tx-container') {
+            pTitle.innerText = "Transaction List";
+            pContent.innerHTML = `Contains ${d.rawTxCount} transactions.<br>Tap to visualize them.`;
+        } else if (d.type === 'transaction') {
+            pTitle.innerText = "Transaction";
+            // d.info now contains the detailed HTML string generated in fetchTransactionDetails
+            pContent.innerHTML = `<strong>Hash:</strong><br>${d.label}<br><br>${d.info}`;
+        } else {
+            pTitle.innerText = d.label;
+            pContent.innerText = d.info;
+        }
+    }
+
+    function closePanel() { panel.classList.remove("active"); }
+
+    window.addEventListener('resize', () => {
+        width = window.innerWidth;
+        height = window.innerHeight;
+        svg.attr("width", width).attr("height", height);
+        simulation.force("center", d3.forceCenter(width / 2, height / 2));
+        simulation.alpha(0.3).restart();
+    });
+
+    svg.on("click", (e) => {
+        if(e.target.tagName === 'svg') closePanel();
+    });
+
+    // --- 9. INITIAL CALL ---
+    initializeGraph();
+
+</script>
+{% endblock %}

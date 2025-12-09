@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - MyCryptocurrency{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <h1>Wallet Dashboard</h1>
+
+    <!-- Balance Card -->
+    <div class="card">
+        <h2>Your Balance</h2>
+        <div class="balance" id="balance">Balance: {{ balance }} BC</div>
+        <div class="address">Address: <span id="walletAddress">{{ wallet_address }}</span></div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card">
+        <h2>Quick Actions</h2>
+        <div class="action-buttons">
+            <a href="{{ url_for('send_page') }}" class="btn btn-primary">Send Funds</a>
+            <button onclick="refreshData()" class="btn btn-secondary">Refresh</button>
+        </div>
+    </div>
+
+    <!-- Blockchain Info -->
+    <div class="card">
+        <h2>Blockchain Status</h2>
+        <div class="info-grid">
+            <div class="info-item">
+                <label>Block Height:</label>
+                <span id="blockHeight">{{ block_height }} Blocks</span>
+            </div>
+            <div class="info-item">
+                <label>Connected Peers:</label>
+                <span id="peerCount">0</span>
+            </div>
+            <div class="info-item">
+                <label>Pending Transactions:</label>
+                <span id="pendingTx">{{ pending_transactions_len }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="card">
+        <h2>Recent Activity</h2>
+        <div id="recentTransactions" class="transactions-list">
+            {% for tx in pending_transactions %}
+            <div class="transaction-card pending">
+                <div class="tx-header">
+                    <span class="tx-type">
+                        {% if tx.sender == wallet_address %}
+                        Outgoing
+                        {% else %}
+                        Incoming
+                        {% endif %}
+                    </span>
+                    <span class="tx-status">Pending</span>
+                </div>
+                <div class="tx-details">
+                    <div class="tx-amount">
+                        {% if tx.sender == wallet_address %}
+                        -{{ tx.amount }} BC
+                        {% else %}
+                        +{{ tx.amount }} BC
+                        {% endif %}
+
+                    </div>
+                    <div class="tx-address">
+                        {% if tx.sender == wallet_address %}
+                        To: {{ tx.recipient[:8] }}...{{ tx.recipient[-8:] }}
+                        {% else %}
+                        From: {{ tx.sender[:8] }}...{{ tx.sender[-8:] }}
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="tx-time">{{ tx.timestamp | format_time }}</div>
+            </div>
+            {% endfor %}
+            {% for transaction in recent_transactions %}
+            <div class="transaction-card confirmed">
+                <div class="tx-header">
+                    <span class="tx-type">
+                        {% if 'sender' in transaction %}
+                        {% if transaction.sender == wallet_address %}
+                        Outgoing
+                        {% else %}
+                        Incoming
+                        {% endif %}
+                        {% else %}
+                        Reward
+                        {% endif %}
+                    </span>
+                    <span class="tx-status">Confirmed</span>
+                </div>
+                <div class="tx-details">
+                    <div class="tx-amount {% if transaction.sender == wallet_address %}outgoing{% else %}incoming{% endif %}">
+                        {% if 'sender' in transaction %}
+                        {% if transaction.sender == wallet_address %}
+                        -{{ transaction.amount }} BC
+                        {% else %}
+                        +{{ transaction.amount }} BC
+                        {% endif %}
+                        {% else %}
+                        +{{ transaction.amount }} BC
+                        {% endif %}
+
+                    </div>
+                    <div class="tx-address">
+                        {% if 'sender' in transaction %}
+                        {% if transaction.sender == wallet_address %}
+                        To: {{ transaction.recipient[:8] }}...{{ transaction.recipient[-8:] }}
+                        {% else %}
+                        From: {{ transaction.sender[:8] }}...{{ transaction.sender[-8:] }}
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="tx-time">{{ transaction.timestamp | format_time }}</div>
+            </div>
+            {% else %}
+            <div class="no-transactions">No recent transactions</div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

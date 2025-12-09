@@ -1,0 +1,28 @@
+# ------------------------------------
+# 1. PyCharm IDE Specific Files
+# ------------------------------------
+# Directory for PyCharm project configuration (CRITICAL to exclude)
+.idea/
+
+# Local history files
+.history
+
+# ------------------------------------
+# 2. General Python Specific Files
+# ------------------------------------
+# Virtual environment directory (common standard name)
+venv/
+env/
+
+# Byte-code files
+*.pyc
+__pycache__/
+
+# Installer/package files
+*.egg-info/
+build/
+dist/
+
+# Operating System files
+.DS_Store
+Thumbs.db
