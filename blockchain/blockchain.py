@@ -1,7 +1,8 @@
 from coin_base_transactions import CoinBase
 from Transactions import Transactions
-from Block import Block
+from .Block import Block
 import json
+import os
 
 class BlockChain:
 
@@ -22,12 +23,12 @@ class BlockChain:
         block_data = genesis_block.block_header()
         block_data["transactions"] = transaction.to_dict()
         self.chain.append(block_data)
-        with open("../My_Data/blockchain.json", "w") as f:
+        with open("my_data/blockchain.json", "w") as f:
             json.dump(self.chain, f)
 
     def load_pending_transactions(self):
         try:
-            with open('../My_Data/pending_transactions.json', 'r') as f:
+            with open('my_data/pending_transactions.json', 'r') as f:
                 tx_data = json.load(f)
                 return [Transactions.from_dict(tx_dict) for tx_dict in tx_data]
         except FileNotFoundError:
@@ -44,16 +45,16 @@ class BlockChain:
     def save_pending_transactions(self):
         transactions_to_save = self.transaction_to_add[0].to_dict()
 
-        with open('../My_Data/pending_transactions.json', 'r') as f:
+        with open('my_data/pending_transactions.json', 'r') as f:
             all_pending_tx = json.load(f)
         transactions_to_save['index'] = len(all_pending_tx)
         all_pending_tx.append(transactions_to_save)
 
-        with open('../My_Data/pending_transactions.json', 'w') as f:
+        with open('my_data/pending_transactions.json', 'w') as f:
             json.dump(all_pending_tx, f, indent=2)
 
     def prev_hash(self):
-        with open("../My_Data/blockchain.json", "r") as f:
+        with open("my_data/blockchain.json", "r") as f:
             blocks = json.load(f)
         return blocks[-1]['hash']
 
@@ -68,7 +69,7 @@ class BlockChain:
         transactions.append(reward_tx)
 
         # Calculate block index
-        with open("../My_Data/blockchain.json", "r") as f:
+        with open("my_data/blockchain.json", "r") as f:
             blocks = json.load(f)
         index = (blocks[-1]['index']) + 1
 
@@ -81,7 +82,7 @@ class BlockChain:
 
         block_data["transactions"] = block_transactions
 
-        self.save_new_block(block = block_data, path ="../My_Data/blockchain.json", path_pending_tranx='../My_Data/pending_transactions.json')
+        self.save_new_block(block = block_data, path ="my_data/blockchain.json", path_pending_tranx='my_data/pending_transactions.json')
 
         # Return back the block to be sent to the rest of the network
         return block_data
@@ -116,7 +117,7 @@ class BlockChain:
         balance = 0
 
         # Read the blockchain file
-        with open('../My_Data/blockchain.json', 'r') as f:
+        with open('my_data/blockchain.json', 'r') as f:
             blockchain = json.load(f)
 
         # Calculating Balance
@@ -133,7 +134,7 @@ class BlockChain:
                         balance -= transaction['amount']
 
         #Also check validated pending transactions
-        with open('../My_Data/pending_transactions.json', 'r') as f:
+        with open('my_data/pending_transactions.json', 'r') as f:
             pending_transactions = json.load(f)
 
         #Calculating Balance
@@ -150,7 +151,7 @@ class BlockChain:
         return balance
 
     def get_latest_block_hash(self):
-        path = '../My_Data/blockchain.json'
+        path = 'my_data/blockchain.json'
         with open(path, 'r') as f:
             blockchain = json.load(f)
 
@@ -161,7 +162,7 @@ class BlockChain:
         return latest_block_hash
 
     def get_latest_tx(self):
-        with open('../My_Data/pending_transactions.json') as f:
+        with open('my_data/pending_transactions.json', 'r') as f:
             pending_tx = json.load(f)
         if len(pending_tx) == 0:
             print("Empty")
@@ -171,7 +172,8 @@ class BlockChain:
             return pending_tx[-1]["tx_hash"]
 
     def find_block_height(self):
-        with open('../My_Data/blockchain.json', 'r') as f:
+        path = 'my_data/blockchain.json'
+        with open(path,  'r') as f:
             blockchain = json.load(f)
 
         return len(blockchain)

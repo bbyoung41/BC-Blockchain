@@ -112,7 +112,7 @@ def send_transaction():
 
         #Check if time for mining
         mined = False
-        with open('../My_Data/pending_transactions.json') as f:
+        with open('my_data/pending_transactions.json') as f:
             pending_tx = json.load(f)
         if len(pending_tx) >= 5:
             print("Mining a new block")
@@ -167,10 +167,10 @@ def api_peers():
 def my_recent_transactions(limit=5):
         recent_tx = []
 
-        with open('../My_Data/blockchain.json', 'r') as f:
+        with open('my_data/blockchain.json', 'r') as f:
             blockchain = json.load(f)
 
-        with open('../My_Data/Wallets/wallet.json') as f:
+        with open('my_data/Wallets/wallet.json') as f:
             wallet = json.load(f)
 
         # Go through blocks in reverse order (newest first)
@@ -189,7 +189,7 @@ def my_recent_transactions(limit=5):
 
 def my_pending_transactions():
     try:
-        with open('../My_Data/pending_transactions.json', 'r') as f:
+        with open('my_data/pending_transactions.json', 'r') as f:
             tx_data = json.load(f)
             return [tx_dict for tx_dict in tx_data]
     except FileNotFoundError:
@@ -198,7 +198,7 @@ def my_pending_transactions():
 
 def generate_mock_blockchain_data():
     """Generates blockchain data in the format expected by the D3 frontend."""
-    path = '../My_Data/blockchain.json'
+    path = 'my_data/blockchain.json'
     with open(path, 'r') as f:
         blockchain = json.load(f)
     num_blocks = len(blockchain)
@@ -241,7 +241,7 @@ def get_blockchain_data():
 
 def generate_mock_transaction_details(block_id, count):
     """Generates a list of detailed transaction objects."""
-    path = '../My_Data/blockchain.json'
+    path = 'my_data/blockchain.json'
     with open(path, 'r') as f:
         blockchain = json.load(f)
     block = blockchain[int(block_id[-1])]

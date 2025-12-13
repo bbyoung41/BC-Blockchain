@@ -9,7 +9,7 @@ from time import process_time_ns
 from wsgiref.validate import validator
 
 from Transactions import Transactions
-from Blockchain.blockchain import BlockChain
+from blockchain.blockchain import BlockChain
 
 class Node:
     def __init__(self, port, host='localhost'):
@@ -18,7 +18,7 @@ class Node:
         self.peers = self.load_peers_from_file()
         self.running = True
         self.current_active_peers = []
-        self.blockchain_path = '../My_Data/blockchain.json'
+        self.blockchain_path = 'my_data/blockchain.json'
 
         self.node_id = f"node_{host}_{port}"  # Unique identifier
         self.capabilities = ['transaction_relay', 'block_validation']
@@ -62,7 +62,7 @@ class Node:
             print(blockchain_data)
 
             # Now save as proper .json file
-            folder_path = '../My_Data/blockchain.json'
+            folder_path = 'my_data/blockchain.json'
             file_name = 'blockchain.json'
             file_path = os.path.join(folder_path, file_name)
 
@@ -213,7 +213,7 @@ class Node:
     def _send_blockchain_to_new_node(self, host, port):
         # Send blockchain to newly joined node
         try:
-            path = "../My_Data/blockchain.json"
+            path = "my_data/blockchain.json"
             if os.path.exists(path):
                 with open(path, 'r') as f:
                     blockchain_data = json.load(f)
@@ -526,7 +526,7 @@ class Node:
                 'node_id': self.node_id
             }
 
-            file_path = '../My_Data/peers.json'
+            file_path = 'my_data/peers.json'
 
             if os.path.exists(file_path):
                 # Update existing file
@@ -547,7 +547,7 @@ class Node:
             print(f"Error saving peers: {e}")
 
     def load_peers_from_file(self):
-        path = '../My_Data/peers.json'
+        path = 'my_data/peers.json'
         if os.path.exists(path):
             with open(path, "r") as f:
                 data = json.load(f)
@@ -605,7 +605,7 @@ class Node:
             except:
                 pass
 
-    # ALERT : This needed change to direct writing to the required location in the Blockchain folder not in the networking folder during production
+    # ALERT : This needed change to direct writing to the required location in the blockchain folder not in the networking folder during production
     def _handle_new_transaction(self, msg):
         transaction_status = msg['status']
         if transaction_status == "Unvalidated":
@@ -637,7 +637,7 @@ class Node:
                 print(f'Error at handle_new_transaction :{e}')
 
         elif transaction_status == 'Validated':
-            path = '../My_Data/pending_transactions.json'
+            path = 'my_data/pending_transactions.json'
             # Write transaction to the pending transactions.json in mydata folder
             try:
                 with open(path, 'r') as f:
@@ -688,8 +688,8 @@ class Node:
             return 'Pending'
 
     def _handle_new_block(self, block):
-        path = '../My_Data/blockchain.json'
-        path_2 = '../My_Data/pending_transactions.json'
+        path = 'my_data/blockchain.json'
+        path_2 = 'my_data/pending_transactions.json'
         BlockChain.save_new_block(block=block, path=path, path_pending_tranx=path_2)
         print("Block successfully mined")
 
@@ -726,7 +726,7 @@ class Node:
                 pass
 
     def _handle_chain_request(self, request_data):
-        path = '../My_Data/blockchain.json'
+        path = 'my_data/blockchain.json'
         # Check against your chain hashes
         with open(path, 'r') as f:
             blockchain = json.load(f)
@@ -768,7 +768,7 @@ class Node:
         #Missing transactions
 
     def _handle_tx_update_request(self, request_data):
-        path = '../My_Data/pending_transactions.json'
+        path = 'my_data/pending_transactions.json'
         # Check against your tx hashes
         with open(path, 'r') as f:
             transactions = json.load(f)

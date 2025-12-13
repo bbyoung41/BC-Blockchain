@@ -1,13 +1,13 @@
-from blockchain import BlockChain
-from Wallet import Wallet
-from Networking.Node import Node
-from GUI.app import app
+from  blockchain.blockchain import BlockChain
+from blockchain.Wallet import Wallet
+from networking.Node import Node
+from gui.app import app
 import threading
 import time
 
 def main():
     # Initialize everything
-    print("Starting Blockchain System...")
+    print("Starting blockchain System...")
 
     # Load or create blockchain
     blockchain = BlockChain()

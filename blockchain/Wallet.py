@@ -21,7 +21,7 @@ class Wallet:
 
 
     def wallet_available(self):
-        file_path = "../My_Data/Wallets/wallet.json"
+        file_path = "my_data/Wallets/wallet.json"
         if os.path.exists(file_path):
             print(f"The file '{file_path}' exists.")
         else:
@@ -87,11 +87,11 @@ class Wallet:
             'Private Key':self.private_key_hex
         }
 
-        with open('../My_Data/Wallets/wallet.json', 'w') as f:
+        with open('my_data/Wallets/wallet.json', 'w') as f:
             json.dump(wallet_data, f)
 
     def read_wallet(self):
-        with open('../My_Data/Wallets/wallet.json', 'r') as f:
+        with open('my_data/Wallets/wallet.json', 'r') as f:
             wallet_data = json.load(f)
         self.private_key_hex = wallet_data['Private Key']
         self.public_key_hex = wallet_data['Public Key']
