@@ -97,7 +97,9 @@ def send_transaction():
 
     # BROADCAST TRANSACTION TO NETWORK
     validation_id = node.broadcast_transaction(transaction=transaction.to_dict())
+
     print("Transaction broadcasted to network!")
+    time.sleep(10)
     validation_status = 'Pending'
     while validation_status == 'Pending':
         validation_status = node.check_validation_status(validation_id)

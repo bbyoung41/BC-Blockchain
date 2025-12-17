@@ -18,10 +18,10 @@ def main():
     print(f"Wallet : {mywallet.address} has been loaded")
 
     # START NODE SERVER IN BACKGROUND THREAD
-    My_Node = Node(port=5000, host='10.238.72.75') # Your node class
+    My_Node = Node(port=24, host='0.0.0.0') # Your node class
     server_thread = threading.Thread(target=My_Node.start_server, daemon=True)
     server_thread.start()
-    print(f"Node server started on port 5000 in background...")
+    print(f"Node server started on port 5001 in background...")
 
     # OPTIONAL: Connect to network
     My_Node.setup()  # Connect to bootstrap/peers

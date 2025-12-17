@@ -12,7 +12,7 @@ from Transactions import Transactions
 from blockchain.blockchain import BlockChain
 
 class Node:
-    def __init__(self, port, host='localhost'):
+    def __init__(self, port, host):
         self.host = host
         self.port = port
         self.peers = self.load_peers_from_file()
@@ -25,7 +25,7 @@ class Node:
 
         self.active_outgoing_connections = {}
         self.DEFAULT_BOOTSTRAP_NODES = [  # Primary bootstrap
-            ('10.238.72.75', 5000),  # Secondary bootstrap
+            ('10.238.72.75', 5001),  # Secondary bootstrap
         ]
 
         self.pending_validation_ids = []
@@ -552,11 +552,11 @@ class Node:
             with open(path, "r") as f:
                 data = json.load(f)
             peer_list = [tuple(peer) for peer in data['peers']]
+            print(f"the Peer list is {peer_list}")
 
             return peer_list
-
         else:
-            return []
+            return ()
 
     def broadcast_transaction(self, transaction, status='Unvalidated'):
         """Broadcast transaction to all peers"""
@@ -576,9 +576,11 @@ class Node:
             'timestamp': time.time()
         }
 
-
-        for peer_host, peer_port in self.peers:
+        peers_list = self.load_peers_from_file()
+        print(f"when broadcasting transactions, the peer_list is {peers_list}")
+        for peer_host, peer_port in peers_list:
             try:
+                print("tried this")
                 self._send_to_peer(peer_host, peer_port, transaction_message)
                 print(f"Sent transaction to {peer_host}:{peer_port}")
                 # Check if the peer is already in the self.active_peers
